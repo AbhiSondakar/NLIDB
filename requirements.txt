@@ -1,0 +1,19 @@
+# Core Web Framework and App Server
+streamlit
+
+# ORM and Database Connection
+sqlalchemy
+psycopg2-binary
+
+# AI Service
+# Using requests to call DeepSeek-compatible HTTP API instead of google-generativeai
+requests
+
+# SQL Validation
+sqlparse
+
+# Environment Variable Management
+python-dotenv
+
+# Data Rendering
+pandas
