@@ -33,19 +33,26 @@ if not app_db_conn or not data_db_conn:
     st.stop()
 
 # Validate API configuration on startup
-provider, provider_data = ai_service.get_configured_provider()
-if not provider:
+model_name, api_key, api_url = ai_service.get_model_config()
+if not all([model_name, api_key, api_url]):
     st.error("""
     ❌ No AI API configured!
 
-    Please configure one of the following in your .env file:
-    - OPENROUTER_API_KEY for OpenRouter (Recommended)
-    - OPENAI_API_KEY for OpenAI
-    - ANTHROPIC_API_KEY for Anthropic Claude
-    - GOOGLE_API_KEY for Google Gemini
-    - CUSTOM_API_KEY + CUSTOM_API_URL for other providers
+    Please configure the following in your .env file:
+    
+    ```env
+    OPENROUTER_API_KEY=sk-or-v1-your-api-key
+    MODEL_NAME=deepseek/deepseek-chat
+    OPENROUTER_API_URL=https://openrouter.ai/api/v1
+    ```
 
-    See API_SETUP_GUIDE.md for detailed instructions.
+    **Available Models:**
+    - `deepseek/deepseek-chat` - Excellent for SQL (Recommended)
+    - `google/gemini-2.0-flash-exp:free` - Fast with vision support
+    - `anthropic/claude-3.5-sonnet` - Top-tier reasoning
+    - `openai/gpt-4o` - Powerful general model
+    
+    Get your API key at: https://openrouter.ai/keys
     """)
     st.stop()
 
@@ -107,7 +114,6 @@ def save_message(session_id: UUID, role: str, content: dict) -> UUID:
             )
             s.add(msg)
             s.commit()
-            # Return the message ID for potential updates
             return msg.id
     except Exception as e:
         st.error(f"Error saving message: {e}")
@@ -179,10 +185,8 @@ def new_chat_callback():
             new_session = ChatSession(title=f"Chat {session_count + 1}")
             s.add(new_session)
             s.commit()
-            # Store the ID before closing the session
             new_session_id = new_session.id
 
-        # Set active chat after commit
         st.session_state.active_chat_id = new_session_id
 
     except Exception as e:
@@ -200,12 +204,24 @@ def clear_schema_cache():
 with st.sidebar:
     st.title("📊 Text-to-SQL Agent")
 
-    # AI Provider Info
-    if provider:
-        st.success(f"✅ Using: {provider.upper()}")
-        available_models = ai_service.get_available_models()
-        if available_models:
-            st.caption(f"Models: {len(available_models)} available")
+    # Display current model configuration
+    if model_name:
+        st.success(f"✅ Connected to OpenRouter")
+        st.info(f"🤖 Model: **{model_name}**")
+        
+        # Model customization tip
+        with st.expander("ℹ️ Change Model"):
+            st.markdown("""
+            To use a different model, update `MODEL_NAME` in your `.env` file:
+            
+            **Popular Options:**
+            - `deepseek/deepseek-chat` (SQL expert)
+            - `google/gemini-2.0-flash-exp:free` (Fast & free)
+            - `anthropic/claude-3.5-sonnet` (Best reasoning)
+            - `openai/gpt-4o` (General purpose)
+            
+            Browse all models at: https://openrouter.ai/models
+            """)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -245,7 +261,6 @@ with st.sidebar:
 if st.session_state.active_chat_id is None:
     st.info("👈 Select a chat from the sidebar or start a new one to begin.")
 
-    # Show helpful info
     st.markdown("""
     ### Welcome to Text-to-SQL Agent! 🚀
 
@@ -261,14 +276,10 @@ if st.session_state.active_chat_id is None:
     - ✅ Automatic SQL generation
     - ✅ Query validation and safety checks
     - ✅ Chat history persistence
-    - ✅ Support for multiple AI providers
-    - ✅ **NEW: Intelligent data visualization**
+    - ✅ Customizable AI models via .env
+    - ✅ Intelligent data visualization
 
-    **Visualization Features:**
-    - 📊 Automatic chart type detection
-    - 📈 7 chart types (line, bar, pie, scatter, histogram, heatmap, boxplot)
-    - 🎨 Publication-quality visualizations
-    - 💾 Charts saved with chat history
+    **Current Model:** `{model_name}`
     """)
 
 else:
@@ -353,7 +364,6 @@ else:
 
                         if viz_analysis['can_visualize']:
                             try:
-                                # Auto-generate recommended chart
                                 chart_image = viz_service.create_chart(
                                     df,
                                     viz_analysis['recommended_chart'],
@@ -397,7 +407,6 @@ else:
                                     st.caption(viz_analysis['reason'])
 
                                 with col2:
-                                    # Chart type selector for regeneration
                                     chart_options = ['auto', 'line', 'bar', 'pie', 'scatter', 'histogram', 'heatmap',
                                                      'boxplot']
                                     new_chart_type = st.selectbox(
@@ -407,10 +416,8 @@ else:
                                         key=f"chart_select_{st.session_state.active_chat_id}"
                                     )
 
-                                # Display the auto-generated chart
                                 st.image(f"data:image/png;base64,{assistant_content['visualization']['image']}")
 
-                                # Regenerate with different type if requested
                                 if new_chart_type != 'auto' and new_chart_type != chart_type:
                                     if st.button("🔄 Regenerate with Selected Type",
                                                  key=f"regen_{st.session_state.active_chat_id}"):
@@ -444,4 +451,4 @@ else:
                 try:
                     save_message(st.session_state.active_chat_id, "system", {"error": error_msg})
                 except:
-                    pass  # If we can't save the error, just display it
+                    pass
