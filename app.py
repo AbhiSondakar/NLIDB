@@ -39,7 +39,7 @@ if not all([model_name, api_key, api_url]):
     ❌ No AI API configured!
 
     Please configure the following in your .env file:
-    
+
     ```env
     OPENROUTER_API_KEY=sk-or-v1-your-api-key
     MODEL_NAME=deepseek/deepseek-chat
@@ -51,7 +51,7 @@ if not all([model_name, api_key, api_url]):
     - `google/gemini-2.0-flash-exp:free` - Fast with vision support
     - `anthropic/claude-3.5-sonnet` - Top-tier reasoning
     - `openai/gpt-4o` - Powerful general model
-    
+
     Get your API key at: https://openrouter.ai/keys
     """)
     st.stop()
@@ -208,18 +208,18 @@ with st.sidebar:
     if model_name:
         st.success(f"✅ Connected to OpenRouter")
         st.info(f"🤖 Model: **{model_name}**")
-        
+
         # Model customization tip
         with st.expander("ℹ️ Change Model"):
             st.markdown("""
             To use a different model, update `MODEL_NAME` in your `.env` file:
-            
+
             **Popular Options:**
             - `deepseek/deepseek-chat` (SQL expert)
             - `google/gemini-2.0-flash-exp:free` (Fast & free)
             - `anthropic/claude-3.5-sonnet` (Best reasoning)
             - `openai/gpt-4o` (General purpose)
-            
+
             Browse all models at: https://openrouter.ai/models
             """)
 
