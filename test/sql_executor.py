@@ -17,7 +17,7 @@ def execute_sql_query(sql_query: str, engine: Engine) -> Tuple[Optional[List[Dic
             
             # Convert results to a list of dicts for JSON serialization and DataFrame
             #.mappings() provides a dict-like interface
-            data = [row._asdict() for row in result.mappings().all()]
+            data = [dict(row) for row in result.mappings().all()]
             return data, None
             
     except (ProgrammingError, OperationalError) as e:

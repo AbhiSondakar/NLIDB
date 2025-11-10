@@ -1,0 +1,241 @@
+# Database Connection Fix Guide
+
+## Problem Analysis
+
+Your `.env.example` shows both databases using `readonly_user`, but:
+- **APP_DB** (text_to_sql_db) needs **WRITE** permissions (stores chat history)
+- **DATA_DB** (Student) needs **READ-ONLY** permissions (security)
+
+## Step 1: Fix PostgreSQL Users & Permissions
+
+```sql
+-- Connect to PostgreSQL as superuser
+psql -U postgres
+
+-- Create databases
+CREATE DATABASE text_to_sql_db;
+CREATE DATABASE Student;
+
+-- Create users with appropriate permissions
+-- User 1: Full access for app database (read/write)
+CREATE USER app_user WITH PASSWORD 'secure_app_pass_123!';
+GRANT ALL PRIVILEGES ON DATABASE text_to_sql_db TO app_user;
+
+-- User 2: Read-only for data database (security)
+CREATE USER readonly_user WITH PASSWORD 'secure_readonly_pass_123!';
+GRANT CONNECT ON DATABASE Student TO readonly_user;
+
+-- Connect to Student database and grant SELECT only
+\c Student
+GRANT USAGE ON SCHEMA public TO readonly_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly_user;
+
+-- Connect to text_to_sql_db and grant full access to app_user
+\c text_to_sql_db
+GRANT ALL PRIVILEGES ON SCHEMA public TO app_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO app_user;
+```
+
+## Step 2: Update Your .env File
+
+Create/update your `.env` file:
+
+```bash
+# AI Provider (choose one)
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+OPENROUTER_API_URL=https://openrouter.ai/api/v1
+OPENROUTER_REFERER=https://github.com/yourusername/text-to-sql
+OPENROUTER_TITLE=Text-to-SQL Agent
+
+# Database Configuration
+# APP_DB: Needs WRITE access (stores chat history)
+APP_DB_URL=postgresql://app_user:secure_app_pass_123!@localhost:5432/text_to_sql_db
+
+# DATA_DB: READ-ONLY access (security best practice)
+DATA_DB_URL=postgresql://readonly_user:secure_readonly_pass_123!@localhost:5432/Student
+```
+
+## Step 3: Test Database Connections
+
+Run the diagnostic script:
+
+```bash
+python main.py
+```
+
+This will test:
+- ✅ psycopg2 connections
+- ✅ SQLAlchemy connections
+- ✅ Read-only validation
+- ✅ Table access
+
+## Step 4: Common Issues & Solutions
+
+### Issue 1: "Failed to connect to Application DB"
+
+**Cause:** Wrong credentials or database doesn't exist
+
+**Solution:**
+```bash
+# Verify database exists
+psql -U postgres -c "\l" | grep text_to_sql_db
+
+# Test connection manually
+psql -U app_user -d text_to_sql_db -h localhost -p 5432
+```
+
+### Issue 2: "peer authentication failed"
+
+**Cause:** PostgreSQL pg_hba.conf not configured for password authentication
+
+**Solution:**
+```bash
+# Edit pg_hba.conf (location varies by OS)
+# Linux: /etc/postgresql/*/main/pg_hba.conf
+# Mac: /usr/local/var/postgres/pg_hba.conf
+# Windows: C:\Program Files\PostgreSQL\*\data\pg_hba.conf
+
+# Change this line:
+# local   all   all   peer
+
+# To this:
+local   all   all   md5
+
+# Restart PostgreSQL
+sudo systemctl restart postgresql  # Linux
+brew services restart postgresql   # Mac
+```
+
+### Issue 3: "WARNING: DATA_DB connection has WRITE permissions"
+
+**Cause:** User has too many permissions
+
+**Solution:**
+```sql
+-- Revoke write permissions
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+ON ALL TABLES IN SCHEMA public FROM readonly_user;
+
+-- Verify permissions
+\c Student
+SELECT grantee, privilege_type
+FROM information_schema.role_table_grants
+WHERE grantee = 'readonly_user';
+```
+
+### Issue 4: "No tables found in the database"
+
+**Cause:** Student database is empty or user lacks permissions
+
+**Solution:**
+```sql
+-- Check if tables exist
+\c Student
+\dt
+
+-- If no tables, create sample data:
+CREATE TABLE students (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    age INT,
+    grade VARCHAR(10)
+);
+
+INSERT INTO students (name, age, grade) VALUES
+('Alice', 20, 'A'),
+('Bob', 21, 'B'),
+('Charlie', 19, 'A');
+
+-- Grant permissions
+GRANT SELECT ON students TO readonly_user;
+```
+
+### Issue 5: Streamlit caching issues
+
+**Cause:** Old connections cached
+
+**Solution:**
+```bash
+# Clear Streamlit cache
+rm -rf ~/.streamlit/cache
+
+# Or add this button in your app (already included)
+# Click "Clear Cache" in sidebar
+```
+
+## Step 5: Verify Setup
+
+After fixing, run:
+
+```bash
+# Test connections
+python main.py
+
+# Start app
+streamlit run app.py
+```
+
+Expected output:
+```
+✅ Using: OPENROUTER
+✅ Application DB connection: SUCCESS
+✅ Data DB connection: SUCCESS (Read-only verified)
+📊 Found X tables in data database
+```
+
+## Step 6: Production Checklist
+
+- [ ] Use strong passwords (20+ characters)
+- [ ] Never commit `.env` to git
+- [ ] Use separate databases for app/data
+- [ ] Verify DATA_DB is truly read-only
+- [ ] Enable SSL for remote connections
+- [ ] Regular backups of APP_DB
+- [ ] Monitor query logs for suspicious activity
+
+## Quick Fix Script
+
+Save this as `fix_db.sh`:
+
+```bash
+#!/bin/bash
+
+echo "🔧 Database Setup Script"
+
+# Create users and databases
+psql -U postgres <<EOF
+CREATE DATABASE text_to_sql_db;
+CREATE DATABASE Student;
+CREATE USER app_user WITH PASSWORD 'secure_app_pass_123!';
+CREATE USER readonly_user WITH PASSWORD 'secure_readonly_pass_123!';
+GRANT ALL PRIVILEGES ON DATABASE text_to_sql_db TO app_user;
+GRANT CONNECT ON DATABASE Student TO readonly_user;
+EOF
+
+# Configure app database
+psql -U postgres -d text_to_sql_db <<EOF
+GRANT ALL PRIVILEGES ON SCHEMA public TO app_user;
+EOF
+
+# Configure data database (read-only)
+psql -U postgres -d Student <<EOF
+GRANT USAGE ON SCHEMA public TO readonly_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly_user;
+EOF
+
+echo "✅ Database setup complete!"
+echo "📝 Update your .env file with the new credentials"
+```
+
+Run with: `chmod +x fix_db.sh && ./fix_db.sh`
+
+## Still Having Issues?
+
+If problems persist, provide:
+1. Error message from `python main.py`
+2. PostgreSQL version: `psql --version`
+3. OS: Linux/Mac/Windows
+4. Connection test output

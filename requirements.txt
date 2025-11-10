@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Core Web Framework and App Server
 streamlit
 
@@ -27,4 +28,35 @@ pillow>=10.0.0
 # Optional: Official API clients (uncomment if you prefer using official SDKs)
 # openai>=1.0.0
 # anthropic
+=======
+# Core Web Framework and App Server
+streamlit
+
+# ORM and Database Connection
+sqlalchemy
+psycopg2
+
+# HTTP Requests for AI APIs
+# Supports: OpenRouter, OpenAI, Anthropic, Google Gemini, and all OpenAI-compatible APIs
+requests
+
+# SQL Validation
+sqlparse
+
+# Environment Variable Management
+python-dotenv
+
+# Data Manipulation and Rendering
+pandas
+
+# Visualization Libraries
+matplotlib>=3.7.0
+seaborn>=0.12.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# Optional: Official API clients (uncomment if you prefer using official SDKs)
+# openai>=1.0.0
+# anthropic
+>>>>>>> 2d72557 (Refactor project structure: moved sql_executor to test/, added verify_config and visualization_service modules, updated configs and dependencies)
 # google-generativeai
