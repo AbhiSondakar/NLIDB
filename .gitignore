@@ -1,0 +1,51 @@
+# 🧠 Environment variables
+.env
+*.env
+.env.*
+
+# 🧱 Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.pdb
+
+# 📦 Dependency and build artifacts
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.manifest
+*.spec
+
+# 🧰 Streamlit cache & logs
+.streamlit/
+.streamlit/secrets.toml
+.streamlit/config.toml
+.streamlit/logs/
+
+# 🧑‍💻 Jupyter / notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# 🗂️ OS / IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 🧾 Logs
+*.log
+
+# 🧩 Other project-specific ignores
+*.sqlite3
+*.db
+*.bak
+__MACOSX/
